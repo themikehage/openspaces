@@ -21,10 +21,14 @@ Status: early development. See `docs/` for the plan.
 
 ```
 pnpm install
-pnpm typecheck && pnpm lint && pnpm test
+pnpm verify
 ```
 
 Node 22+ and pnpm are required.
+
+## Working on this repository
+
+The work system for humans and AI agents is in [AGENTS.md](./AGENTS.md): read [about.md](./about.md) first, track work in [steps.md](./steps.md) and [inbox.md](./inbox.md), and follow the `/START`, `/TRIAGE`, `/EXECUTE`, `/TEST` and `/SHIP` routines in `.agents/routines/`. Rules live in `.agents/rules/`.
 
 ## Running the daemon
 

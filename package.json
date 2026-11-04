@@ -15,7 +15,9 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "test:e2e": "pnpm --filter @openspaces/web build && vitest run -c vitest.e2e.config.ts"
+    "test:e2e": "pnpm --filter @openspaces/web build && vitest run -c vitest.e2e.config.ts",
+    "check:size": "! git ls-files '*.ts' '*.tsx' | xargs wc -l | awk '$1>300 && $2!=\"total\"' | grep .",
+    "verify": "pnpm format:check && pnpm typecheck && pnpm lint && pnpm check:size && pnpm test && pnpm build"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
