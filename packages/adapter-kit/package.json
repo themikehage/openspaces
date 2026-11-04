@@ -1,0 +1,21 @@
+{
+  "name": "@openspaces/adapter-kit",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "exports": {
+    ".": "./src/index.ts",
+    "./contract": "./src/contract.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@openspaces/core": "workspace:*",
+    "@openspaces/protocol": "workspace:*"
+  },
+  "peerDependencies": {
+    "vitest": "^5.1.0"
+  }
+}

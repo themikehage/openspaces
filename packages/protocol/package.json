@@ -1,0 +1,17 @@
+{
+  "name": "@openspaces/protocol",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@openspaces/core": "workspace:*",
+    "zod": "^4.6.7"
+  }
+}
