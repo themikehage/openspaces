@@ -247,6 +247,9 @@ importers:
       '@openspaces/adapter-claude-code':
         specifier: workspace:*
         version: link:../../packages/adapter-claude-code
+      '@openspaces/adapter-devin':
+        specifier: workspace:*
+        version: link:../../packages/adapter-devin
       '@openspaces/adapter-kit':
         specifier: workspace:*
         version: link:../../packages/adapter-kit
@@ -303,6 +306,15 @@ importers:
         specifier: ^8.3.5
         version: 8.3.5(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)
 
+  packages/adapter-acp:
+    dependencies:
+      '@openspaces/adapter-kit':
+        specifier: workspace:*
+        version: link:../adapter-kit
+      '@openspaces/core':
+        specifier: workspace:*
+        version: link:../core
+
   packages/adapter-claude-code:
     dependencies:
       '@anthropic-ai/claude-agent-sdk':
@@ -314,6 +326,19 @@ importers:
       '@openspaces/core':
         specifier: workspace:*
         version: link:../core
+
+  packages/adapter-devin:
+    dependencies:
+      '@openspaces/adapter-acp':
+        specifier: workspace:*
+        version: link:../adapter-acp
+      '@openspaces/core':
+        specifier: workspace:*
+        version: link:../core
+    devDependencies:
+      '@openspaces/adapter-kit':
+        specifier: workspace:*
+        version: link:../adapter-kit
 
   packages/adapter-kit:
     dependencies:

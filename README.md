@@ -10,6 +10,8 @@ Status: early development. See `docs/` for the plan.
 - `packages/protocol`: Zod schemas for the public API and events.
 - `packages/adapter-kit`: adapter helpers, the fake agent and the adapter/store contract test suites.
 - `packages/adapter-claude-code`: Claude Code through the Agent SDK.
+- `packages/adapter-acp`: generic Agent Client Protocol client adapter.
+- `packages/adapter-devin`: Devin CLI manifest on top of `adapter-acp`.
 - `packages/store-sqlite`: SQLite persistence (`node:sqlite`).
 - `packages/api-client`: typed browser client and SSE stream for the daemon API.
 - `apps/web`: Vite + React + Tailwind v4 UI (sessions, timeline, approvals).

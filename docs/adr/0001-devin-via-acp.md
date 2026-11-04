@@ -31,3 +31,11 @@ Build `adapter-acp` as the generic implementation and make `adapter-devin` a thi
 - `probe()` must report `available: true` but flag a missing login so the UI can tell the user to run `devin auth login`.
 - Permission mode is a session option. The default stays `accept-edits`; `bypass` must be an explicit opt-in that marks the session `unattended`.
 - If approvals do not arrive through `session/request_permission`, Devin sessions are declared `approvals: false` and shown as `unattended`.
+
+## Implementation status (2026-11-04)
+
+- `packages/adapter-acp` implements the generic ACP client: newline-delimited JSON-RPC over a supervised subprocess, `initialize`, `session/new`, `session/load` (history replay is suppressed), `session/prompt`, `session/cancel`, `session/set_mode` and `session/request_permission` mapped to approvals.
+- `packages/adapter-devin` is the manifest: `devin acp`, version parsing, login check through `devin auth status`, default mode `accept-edits`.
+- Both pass the shared adapter contract suite against a mock ACP agent over real stdio. The mock is built from the ACP schema and the recorded Devin `initialize` and `session/new` fixture, not from a recorded prompt turn.
+- Starting a session now probes the adapter first, because `devin acp` accepts `session/new` without credentials and would otherwise fail only at the first prompt.
+- Still unverified against the real CLI (needs `devin auth login`): permission requests in `accept-edits` and `smart` modes, cancellation, resume. Run `OPENSPACES_LIVE=devin pnpm exec vitest run devin-adapter.live`.

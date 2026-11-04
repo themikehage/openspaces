@@ -1,5 +1,5 @@
 import type { AdapterRegistry } from "./adapter-registry.js";
-import { OpenSpacesError } from "./errors.js";
+import { AdapterStartError, OpenSpacesError } from "./errors.js";
 import type { AgentEvent, AgentEventBody, ApprovalDecision } from "./events.js";
 import type { AgentRun, Clock, IdGenerator, Logger, SessionRecord, SessionStore } from "./ports.js";
 import { isTerminal, transition, type SessionInput, type SessionState } from "./session-state.js";
@@ -45,6 +45,10 @@ export class SessionService {
   async create(input: CreateSessionInput): Promise<SessionRecord> {
     const { registry, store, clock, ids } = this.deps;
     const adapter = registry.get(input.adapterId);
+    const probe = await adapter.probe();
+    if (!probe.available || !probe.supported) {
+      throw new AdapterStartError(adapter.id, probe.reason ?? "adapter is not available");
+    }
     const now = clock.now();
     const record: SessionRecord = {
       id: ids.next(),

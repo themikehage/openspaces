@@ -104,6 +104,19 @@ describe("SessionService", () => {
     await expect(service.prompt(session.id, "x")).rejects.toThrow(SessionNotLiveError);
   });
 
+  it("refuses to start sessions on adapters that are not ready", async () => {
+    const notReady: AgentAdapter = {
+      ...createFakeAgent(),
+      id: "not-ready",
+      probe: async () => ({ available: true, supported: false, reason: "log in first" }),
+    };
+    const { service } = build(notReady);
+    await expect(service.create({ adapterId: "not-ready", cwd: "/tmp" })).rejects.toThrow(
+      /log in first/,
+    );
+    expect(await service.list()).toEqual([]);
+  });
+
   it("rejects prompts while a turn is running", async () => {
     const { service } = build();
     const session = await service.create({ adapterId: "fake", cwd: "/tmp" });

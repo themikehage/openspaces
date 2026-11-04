@@ -11,6 +11,7 @@ const STATUS: Record<string, ContentfulStatusCode> = {
   invalid_transition: 409,
   project_not_registered: 403,
   duplicate_adapter: 500,
+  adapter_start_failed: 502,
 };
 
 export function handleError(error: Error, c: Context): Response {

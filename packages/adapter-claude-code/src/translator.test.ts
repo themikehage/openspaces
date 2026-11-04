@@ -72,6 +72,14 @@ describe("ClaudeTranslator", () => {
     ]);
   });
 
+  it("reports cost as a delta of the cumulative total", () => {
+    const t = new ClaudeTranslator();
+    const result = (total: number) =>
+      t.translate({ type: "result", subtype: "success", total_cost_usd: total });
+    expect(result(0.5)[0]).toEqual({ type: "usage.reported", costUsd: 0.5 });
+    expect(result(0.75)[0]).toEqual({ type: "usage.reported", costUsd: 0.25 });
+  });
+
   it("reports a non-fatal error for failed results", () => {
     const events = new ClaudeTranslator().translate({
       type: "result",

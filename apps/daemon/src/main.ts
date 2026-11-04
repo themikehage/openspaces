@@ -4,6 +4,7 @@ import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 import { serve } from "@hono/node-server";
 import { createClaudeCodeAdapter } from "@openspaces/adapter-claude-code";
+import { createDevinAdapter } from "@openspaces/adapter-devin";
 import { createFakeAgent } from "@openspaces/adapter-kit";
 import { AdapterRegistry, SessionService, type Logger } from "@openspaces/core";
 import { SqliteSessionStore } from "@openspaces/store-sqlite";
@@ -41,6 +42,7 @@ async function main() {
 
   const registry = new AdapterRegistry();
   registry.register(createClaudeCodeAdapter());
+  registry.register(createDevinAdapter());
   if (process.env["OPENSPACES_FAKE"] === "1") registry.register(createFakeAgent());
 
   const service = new SessionService({

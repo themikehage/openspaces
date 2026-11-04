@@ -31,3 +31,9 @@ export class UnknownSessionError extends OpenSpacesError {
     super("unknown_session", `No session with id "${id}"`);
   }
 }
+
+export class AdapterStartError extends OpenSpacesError {
+  constructor(adapterId: string, reason: string) {
+    super("adapter_start_failed", `Could not start "${adapterId}": ${reason}`);
+  }
+}

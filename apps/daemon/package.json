@@ -14,6 +14,7 @@
   "dependencies": {
     "@hono/node-server": "^2.1.6",
     "@openspaces/adapter-claude-code": "workspace:*",
+    "@openspaces/adapter-devin": "workspace:*",
     "@openspaces/adapter-kit": "workspace:*",
     "@openspaces/core": "workspace:*",
     "@openspaces/protocol": "workspace:*",

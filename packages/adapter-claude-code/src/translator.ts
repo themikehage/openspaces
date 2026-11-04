@@ -5,6 +5,7 @@ import type { SdkMessageLike } from "./types.js";
 export class ClaudeTranslator {
   private currentMessageId = "message";
   private interrupted = false;
+  private lastCostUsd = 0;
 
   markInterrupted(): void {
     this.interrupted = true;
@@ -102,7 +103,9 @@ export class ClaudeTranslator {
     const usage = asRecord(message["usage"]);
     const inputTokens = asNumber(usage?.["input_tokens"]);
     const outputTokens = asNumber(usage?.["output_tokens"]);
-    const costUsd = asNumber(message["total_cost_usd"]);
+    const totalCost = asNumber(message["total_cost_usd"]);
+    const costUsd = totalCost === undefined ? undefined : Math.max(0, totalCost - this.lastCostUsd);
+    if (totalCost !== undefined) this.lastCostUsd = totalCost;
     const events: AgentEventBody[] = [];
     if (inputTokens !== undefined || outputTokens !== undefined || costUsd !== undefined) {
       events.push({
