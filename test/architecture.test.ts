@@ -7,6 +7,11 @@ const root = join(import.meta.dirname, "..");
 const allowed: Record<string, readonly string[]> = {
   core: [],
   protocol: ["@openspaces/core", "zod"],
+  "adapter-claude-code": [
+    "@anthropic-ai/claude-agent-sdk",
+    "@openspaces/adapter-kit",
+    "@openspaces/core",
+  ],
   "adapter-kit": ["@openspaces/core", "@openspaces/protocol", "vitest"],
 };
 
