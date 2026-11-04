@@ -1,64 +1,21 @@
-import type { AdapterRegistry } from "./adapter-registry.js";
 import {
   AdapterStartError,
   NotResumableError,
-  OpenSpacesError,
   SessionLimitError,
   UnknownSessionError,
   WorkspaceUnavailableError,
 } from "./errors.js";
 import type { AgentEvent, AgentEventBody, ApprovalDecision } from "./events.js";
+import type { AgentRun, SessionRecord, Workspace, WorkspaceMode } from "./ports.js";
 import type {
-  AgentRun,
-  Clock,
-  IdGenerator,
-  Logger,
-  SessionRecord,
-  SessionStore,
-  Workspace,
-  WorkspaceMode,
-  WorkspaceProvider,
-} from "./ports.js";
+  CreateSessionInput,
+  LiveSession,
+  SessionServiceDeps,
+  Listener,
+} from "./session-service-types.js";
+import { SessionNotLiveError } from "./session-service-types.js";
+import { recoverInterruptedSessions } from "./session-recovery.js";
 import { isTerminal, transition, type SessionInput, type SessionState } from "./session-state.js";
-
-export interface SessionServiceDeps {
-  registry: AdapterRegistry;
-  store: SessionStore;
-  clock: Clock;
-  ids: IdGenerator;
-  logger: Logger;
-  workspaces?: WorkspaceProvider;
-  maxLiveSessions?: number;
-}
-
-export interface CreateSessionInput {
-  adapterId: string;
-  cwd: string;
-  projectPath?: string;
-  workspaceMode?: WorkspaceMode;
-  resumeExternalSessionId?: string;
-  options?: Readonly<Record<string, unknown>>;
-}
-
-type Listener = (event: AgentEvent) => void;
-
-interface LiveSession {
-  run: AgentRun;
-  state: SessionState;
-  listeners: Set<Listener>;
-  queue: Promise<void>;
-  ready: Promise<void>;
-  closing: boolean;
-  workspace: Workspace | undefined;
-  finished: Promise<void>;
-  markReady: () => void;
-}
-
-export class SessionNotLiveError extends OpenSpacesError {
-  constructor(id: string) {
-    super("session_not_live", `Session ${id} has no active run`);
-  }
-}
 
 export class SessionService {
   private readonly live = new Map<string, LiveSession>();
@@ -145,23 +102,8 @@ export class SessionService {
     });
   }
 
-  async recover(): Promise<number> {
-    const { store, clock } = this.deps;
-    let recovered = 0;
-    for (const record of await store.list()) {
-      if (isTerminal(record.state) || this.live.has(record.id)) continue;
-      const failure: AgentEventBody = {
-        type: "session.error",
-        code: "daemon_restarted",
-        message: "The daemon restarted while this session was active",
-        fatal: true,
-      };
-      await store.appendEvent(record.id, failure, clock.now());
-      await store.appendEvent(record.id, { type: "session.ended", reason: "failed" }, clock.now());
-      await store.update(record.id, { state: "failed" }, clock.now());
-      recovered += 1;
-    }
-    return recovered;
+  recover(): Promise<number> {
+    return recoverInterruptedSessions(this.deps.store, this.deps.clock, (id) => this.live.has(id));
   }
 
   async closeAll(): Promise<void> {
@@ -347,3 +289,6 @@ export class SessionService {
     await this.setState(id, session, "failed");
   }
 }
+
+export { SessionNotLiveError } from "./session-service-types.js";
+export type { CreateSessionInput, SessionServiceDeps } from "./session-service-types.js";

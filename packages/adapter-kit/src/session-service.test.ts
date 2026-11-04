@@ -1,51 +1,18 @@
 import {
-  AdapterRegistry,
-  MemorySessionStore,
   NotResumableError,
   SessionLimitError,
   SessionNotLiveError,
-  SessionService,
   withCapabilities,
   type AgentAdapter,
   type AgentEvent,
   type AgentEventBody,
-  type Logger,
   type Workspace,
   type WorkspaceProvider,
 } from "@openspaces/core";
 import { describe, expect, it } from "vitest";
+import { build, until } from "./service-harness.js";
 import { EventChannel } from "./event-channel.js";
 import { createFakeAgent, FAKE_TRIGGERS } from "./fake-agent.js";
-
-const silent: Logger = { debug() {}, info() {}, warn() {}, error() {} };
-
-function build(
-  adapter: AgentAdapter = createFakeAgent(),
-  extra: { workspaces?: WorkspaceProvider; maxLiveSessions?: number } = {},
-) {
-  let n = 0;
-  const registry = new AdapterRegistry();
-  registry.register(adapter);
-  const store = new MemorySessionStore();
-  const service = new SessionService({
-    registry,
-    store,
-    clock: { now: () => ++n },
-    ids: { next: () => `s${++n}` },
-    logger: silent,
-    ...extra,
-  });
-  return { service, store };
-}
-
-async function until(check: () => Promise<boolean> | boolean, ms = 2000): Promise<void> {
-  const deadline = Date.now() + ms;
-  while (Date.now() < deadline) {
-    if (await check()) return;
-    await new Promise((resolve) => setTimeout(resolve, 2));
-  }
-  throw new Error("condition not met");
-}
 
 describe("SessionService", () => {
   it("creates an idle session and persists stamped events", async () => {
