@@ -1,0 +1,19 @@
+{
+  "name": "@openspaces/store-sqlite",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@openspaces/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@openspaces/adapter-kit": "workspace:*"
+  }
+}

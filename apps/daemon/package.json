@@ -1,0 +1,24 @@
+{
+  "name": "@openspaces/daemon",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "dev": "tsx src/main.ts"
+  },
+  "dependencies": {
+    "@hono/node-server": "^2.1.6",
+    "@openspaces/adapter-claude-code": "workspace:*",
+    "@openspaces/adapter-kit": "workspace:*",
+    "@openspaces/core": "workspace:*",
+    "@openspaces/protocol": "workspace:*",
+    "@openspaces/store-sqlite": "workspace:*",
+    "hono": "^4.13.16",
+    "zod": "^4.6.7"
+  }
+}

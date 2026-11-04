@@ -12,6 +12,7 @@ const allowed: Record<string, readonly string[]> = {
     "@openspaces/adapter-kit",
     "@openspaces/core",
   ],
+  "store-sqlite": ["@openspaces/core"],
   "adapter-kit": ["@openspaces/core", "@openspaces/protocol", "vitest"],
 };
 

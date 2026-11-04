@@ -6,7 +6,8 @@
   "license": "MIT",
   "exports": {
     ".": "./src/index.ts",
-    "./contract": "./src/contract.ts"
+    "./contract": "./src/contract.ts",
+    "./store-contract": "./src/store-contract.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit -p tsconfig.json"

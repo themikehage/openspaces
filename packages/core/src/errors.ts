@@ -25,3 +25,9 @@ export class UnknownAdapterError extends OpenSpacesError {
     super("unknown_adapter", `No adapter registered with id "${id}"`);
   }
 }
+
+export class UnknownSessionError extends OpenSpacesError {
+  constructor(id: string) {
+    super("unknown_session", `No session with id "${id}"`);
+  }
+}

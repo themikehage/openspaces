@@ -17,7 +17,9 @@ export class MemorySessionStore implements SessionStore {
   }
 
   async list(): Promise<SessionRecord[]> {
-    return [...this.sessions.values()].map((record) => ({ ...record }));
+    return [...this.sessions.values()]
+      .sort((a, b) => b.createdAt - a.createdAt || a.id.localeCompare(b.id))
+      .map((record) => ({ ...record }));
   }
 
   async update(id: string, patch: SessionPatch, updatedAt: number): Promise<SessionRecord> {
