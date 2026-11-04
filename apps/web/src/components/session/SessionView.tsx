@@ -1,0 +1,57 @@
+import type { AdapterInfoDto } from "@openspaces/protocol";
+import { PromptBox } from "@/components/session/PromptBox";
+import { SessionHeader } from "@/components/session/SessionHeader";
+import { Timeline } from "@/components/session/Timeline";
+import { useSession } from "@/hooks/use-session";
+
+interface Props {
+  sessionId: string;
+  adapters: AdapterInfoDto[];
+}
+
+export function SessionView({ sessionId, adapters }: Props) {
+  const view = useSession(sessionId);
+  const { session } = view;
+
+  if (!session) {
+    return (
+      <p className="m-auto text-sm text-muted" role={view.actionError ? "alert" : "status"}>
+        {view.actionError ?? "Loading session…"}
+      </p>
+    );
+  }
+
+  const adapter = adapters.find((candidate) => candidate.id === session.adapterId);
+  const finished = session.state === "ended" || session.state === "failed";
+  const running = session.state === "running" || session.state === "awaiting_approval";
+
+  return (
+    <div className="flex h-full flex-col">
+      <SessionHeader
+        session={session}
+        adapter={adapter}
+        status={view.status}
+        usage={view.timeline.usage}
+        canClose={!finished}
+        onClose={() => void view.close()}
+      />
+      <Timeline
+        items={view.timeline.items}
+        busy={view.busy}
+        onDecide={(approvalId, decision) => void view.approve(approvalId, decision)}
+      />
+      {view.actionError && (
+        <p role="alert" className="px-4 pb-2 text-sm text-danger">
+          {view.actionError}
+        </p>
+      )}
+      <PromptBox
+        disabled={finished || running || view.busy}
+        running={running}
+        canInterrupt={adapter?.capabilities.interrupt ?? false}
+        onSend={view.sendPrompt}
+        onInterrupt={() => void view.interrupt()}
+      />
+    </div>
+  );
+}

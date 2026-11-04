@@ -55,6 +55,11 @@ describe("SessionService", () => {
 
     const events = await service.events(session.id);
     expect(events.map((e) => e.id)).toEqual(events.map((_, i) => i + 1));
+    expect(events.find((e) => e.type === "message.completed" && e.role === "user")).toMatchObject({
+      text: "hello",
+    });
+    const types = events.map((e) => e.type);
+    expect(types.indexOf("message.completed")).toBeLessThan(types.indexOf("turn.started"));
     expect(events.every((e) => e.schemaVersion === 1)).toBe(true);
     await service.close(session.id);
   });

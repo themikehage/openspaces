@@ -12,6 +12,7 @@ const allowed: Record<string, readonly string[]> = {
     "@openspaces/adapter-kit",
     "@openspaces/core",
   ],
+  "api-client": ["@openspaces/core", "@openspaces/protocol", "zod"],
   "store-sqlite": ["@openspaces/core"],
   "adapter-kit": ["@openspaces/core", "@openspaces/protocol", "vitest"],
 };
@@ -21,6 +22,14 @@ function sources(dir: string): string[] {
     const path = join(dir, name);
     if (statSync(path).isDirectory()) return sources(path);
     return path.endsWith(".ts") ? [path] : [];
+  });
+}
+
+function tsxSources(dir: string): string[] {
+  return readdirSync(dir).flatMap((name) => {
+    const path = join(dir, name);
+    if (statSync(path).isDirectory()) return tsxSources(path);
+    return path.endsWith(".tsx") ? [path] : [];
   });
 }
 
@@ -57,5 +66,23 @@ describe("architecture", () => {
   it("every package has a rule", () => {
     const packages = readdirSync(join(root, "packages"));
     expect(packages.sort()).toEqual(Object.keys(allowed).sort());
+  });
+
+  describe("web app", () => {
+    const webSrc = join(root, "apps", "web", "src");
+    const files = () =>
+      sources(webSrc)
+        .concat(tsxSources(webSrc))
+        .filter((f) => !f.includes(".test."));
+
+    it("does not call fetch directly", () => {
+      const offenders = files().filter((f) => /\bfetch\(/.test(readFileSync(f, "utf8")));
+      expect(offenders.map((f) => relative(root, f))).toEqual([]);
+    });
+
+    it("does not use deep relative imports", () => {
+      const offenders = files().filter((f) => /from\s+["']\.\.\//.test(readFileSync(f, "utf8")));
+      expect(offenders.map((f) => relative(root, f))).toEqual([]);
+    });
   });
 });

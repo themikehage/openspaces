@@ -23,6 +23,7 @@ import {
   tokenMatches,
   type SecurityConfig,
 } from "./security.js";
+import { mountWeb } from "./static.js";
 import { streamSession } from "./sse.js";
 
 export interface DaemonDeps {
@@ -31,6 +32,7 @@ export interface DaemonDeps {
   projects: ProjectGuard;
   security: SecurityConfig;
   logger: Logger;
+  webRoot?: string;
 }
 
 async function json(c: { req: { json(): Promise<unknown> } }): Promise<unknown> {
@@ -148,5 +150,6 @@ export function createApp(deps: DaemonDeps): Hono {
   });
 
   app.route("/api", api);
+  if (deps.webRoot) mountWeb(app, deps.webRoot);
   return app;
 }

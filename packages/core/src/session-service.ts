@@ -107,6 +107,12 @@ export class SessionService {
     const previous = session.state;
     await this.apply(id, session, { kind: "command", command: "prompt" });
     try {
+      await this.record(id, session, {
+        type: "message.completed",
+        messageId: this.deps.ids.next(),
+        role: "user",
+        text,
+      });
       await session.run.send({ text });
     } catch (error) {
       await this.setState(id, session, previous);

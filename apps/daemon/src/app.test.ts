@@ -1,4 +1,4 @@
-import { mkdtempSync, mkdirSync, rmSync } from "node:fs";
+import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createFakeAgent, FAKE_TRIGGERS } from "@openspaces/adapter-kit";
@@ -12,6 +12,7 @@ const HOST = "127.0.0.1:3210";
 const ORIGIN = `http://${HOST}`;
 const silent: Logger = { debug() {}, info() {}, warn() {}, error() {} };
 
+let web: string;
 let root: string;
 let outside: string;
 let app: ReturnType<typeof createApp>;
@@ -20,6 +21,11 @@ beforeAll(async () => {
   root = mkdtempSync(join(tmpdir(), "openspaces-daemon-"));
   outside = mkdtempSync(join(tmpdir(), "openspaces-outside-"));
   mkdirSync(join(root, "proj"));
+  web = mkdtempSync(join(tmpdir(), "openspaces-web-"));
+  mkdirSync(join(web, "assets"));
+  writeFileSync(join(web, "index.html"), "<!doctype html><title>x</title>");
+  writeFileSync(join(web, "assets", "a.js"), "console.log(1)");
+  writeFileSync(join(tmpdir(), "openspaces-secret.txt"), "secret");
   const registry = new AdapterRegistry();
   registry.register(createFakeAgent());
   let n = 0;
@@ -35,12 +41,15 @@ beforeAll(async () => {
     projects: await ProjectGuard.create([root]),
     security: { token: TOKEN, allowedHosts: [HOST], allowedOrigins: [ORIGIN] },
     logger: silent,
+    webRoot: web,
   });
 });
 
 afterAll(() => {
   rmSync(root, { recursive: true, force: true });
   rmSync(outside, { recursive: true, force: true });
+  rmSync(web, { recursive: true, force: true });
+  rmSync(join(tmpdir(), "openspaces-secret.txt"), { force: true });
 });
 
 const auth = { host: HOST, authorization: `Bearer ${TOKEN}` };
@@ -249,5 +258,34 @@ describe("sessions API", () => {
       "interrupted",
     );
     await call(`/api/sessions/${id}`, { method: "DELETE" });
+  });
+});
+
+describe("web hosting", () => {
+  const page = (path: string) => app.request(`${ORIGIN}${path}`, { headers: { host: HOST } });
+
+  it("serves the app shell without credentials, with a strict CSP", async () => {
+    const res = await page("/");
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toContain("text/html");
+    expect(res.headers.get("content-security-policy")).toContain("default-src 'self'");
+    expect(await res.text()).toContain("<title>x</title>");
+  });
+
+  it("serves hashed assets as immutable and falls back to the shell for routes", async () => {
+    const asset = await page("/assets/a.js");
+    expect(asset.headers.get("content-type")).toContain("javascript");
+    expect(asset.headers.get("cache-control")).toContain("immutable");
+    expect(await (await page("/some/client/route")).text()).toContain("<title>x</title>");
+  });
+
+  it("does not escape the web root", async () => {
+    const res = await page("/..%2fopenspaces-secret.txt");
+    expect(await res.text()).not.toContain("secret");
+  });
+
+  it("keeps unknown API routes as JSON 404 and protected", async () => {
+    const res = await page("/api/nope");
+    expect(res.status).toBe(401);
   });
 });

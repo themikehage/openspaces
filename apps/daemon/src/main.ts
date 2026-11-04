@@ -1,7 +1,7 @@
 import { randomBytes } from "node:crypto";
-import { mkdirSync } from "node:fs";
+import { existsSync, mkdirSync } from "node:fs";
 import { homedir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { serve } from "@hono/node-server";
 import { createClaudeCodeAdapter } from "@openspaces/adapter-claude-code";
 import { createFakeAgent } from "@openspaces/adapter-kit";
@@ -51,6 +51,10 @@ async function main() {
     logger,
   });
 
+  const defaultWeb = resolve(import.meta.dirname, "../../web/dist");
+  const webRoot =
+    process.env["OPENSPACES_WEB_DIR"] ?? (existsSync(defaultWeb) ? defaultWeb : undefined);
+
   const token = randomBytes(32).toString("hex");
   const hosts = [`127.0.0.1:${port}`, `localhost:${port}`];
   const app = createApp({
@@ -59,6 +63,7 @@ async function main() {
     projects: await ProjectGuard.create(projects),
     security: { token, allowedHosts: hosts, allowedOrigins: hosts.map((h) => `http://${h}`) },
     logger,
+    ...(webRoot ? { webRoot } : {}),
   });
 
   serve({ fetch: app.fetch, hostname: "127.0.0.1", port });
