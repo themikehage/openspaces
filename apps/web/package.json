@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
+    "@fontsource-variable/outfit": "^5.3.0",
     "@openspaces/api-client": "workspace:*",
     "@openspaces/core": "workspace:*",
     "@openspaces/protocol": "workspace:*",
