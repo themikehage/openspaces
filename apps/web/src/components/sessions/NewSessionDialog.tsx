@@ -1,5 +1,7 @@
 import type { AdapterInfoDto, CreateSessionRequest } from "@openspaces/protocol";
 import { useEffect, useRef } from "react";
+import { Button } from "@/components/ui/Button";
+import { fieldClass } from "@/components/ui/Field";
 import { useNewSessionForm } from "@/hooks/use-new-session-form";
 
 interface Props {
@@ -11,8 +13,7 @@ interface Props {
   onCreated: (id: string) => void;
 }
 
-const field =
-  "w-full rounded-md border border-line bg-surface px-3 py-2 text-sm placeholder:text-muted";
+const field = fieldClass;
 
 export function NewSessionDialog({ open, adapters, projects, create, onClose, onCreated }: Props) {
   const ref = useRef<HTMLDialogElement>(null);
@@ -30,7 +31,7 @@ export function NewSessionDialog({ open, adapters, projects, create, onClose, on
       ref={ref}
       onClose={onClose}
       aria-labelledby="new-session-title"
-      className="m-auto w-full max-w-md rounded-lg border border-line bg-surface p-0 text-ink backdrop:bg-black/40"
+      className="m-auto w-full max-w-md rounded-2xl bg-card p-0 text-foreground shadow-2xl backdrop:bg-black/60 backdrop:backdrop-blur-xs"
     >
       <form
         className="flex flex-col gap-4 p-5"
@@ -39,11 +40,11 @@ export function NewSessionDialog({ open, adapters, projects, create, onClose, on
           void form.submit();
         }}
       >
-        <h2 id="new-session-title" className="text-lg font-semibold">
+        <h2 id="new-session-title" className="text-base font-semibold">
           New session
         </h2>
 
-        <label className="flex flex-col gap-1 text-sm">
+        <label className="flex flex-col gap-1.5 text-xs font-semibold text-muted-foreground">
           Agent
           <select
             className={field}
@@ -64,7 +65,7 @@ export function NewSessionDialog({ open, adapters, projects, create, onClose, on
           </select>
         </label>
 
-        <label className="flex flex-col gap-1 text-sm">
+        <label className="flex flex-col gap-1.5 text-xs font-semibold text-muted-foreground">
           Project directory
           <input
             className={`${field} font-mono`}
@@ -81,7 +82,7 @@ export function NewSessionDialog({ open, adapters, projects, create, onClose, on
           </datalist>
         </label>
 
-        <label className="flex flex-col gap-1 text-sm">
+        <label className="flex flex-col gap-1.5 text-xs font-semibold text-muted-foreground">
           Workspace
           <select
             className={field}
@@ -95,26 +96,18 @@ export function NewSessionDialog({ open, adapters, projects, create, onClose, on
         </label>
 
         {form.error && (
-          <p role="alert" className="text-sm text-danger">
+          <p role="alert" className="text-sm text-destructive">
             {form.error}
           </p>
         )}
 
         <div className="flex justify-end gap-2">
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-md px-3 py-2 text-sm hover:bg-sunken"
-          >
+          <Button variant="ghost" onClick={onClose}>
             Cancel
-          </button>
-          <button
-            type="submit"
-            disabled={!form.canSubmit}
-            className="rounded-md bg-accent px-3 py-2 text-sm font-medium text-accent-ink disabled:opacity-50"
-          >
+          </Button>
+          <Button type="submit" variant="accent" disabled={!form.canSubmit}>
             {form.submitting ? "Starting…" : "Start session"}
-          </button>
+          </Button>
         </div>
       </form>
     </dialog>

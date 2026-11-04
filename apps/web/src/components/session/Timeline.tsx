@@ -20,9 +20,11 @@ export function Timeline({ items, busy, onDecide }: Props) {
       role="log"
       aria-live="polite"
       aria-label="Session timeline"
-      className="flex flex-1 flex-col gap-3 overflow-y-auto p-4"
+      className="flex flex-1 flex-col gap-3 overflow-y-auto bg-background p-5"
     >
-      {items.length === 0 && <p className="m-auto text-sm text-muted">Send a prompt to begin.</p>}
+      {items.length === 0 && (
+        <p className="m-auto text-sm text-muted-foreground">Send a prompt to begin.</p>
+      )}
       {items.map((item) => {
         const key = `${item.kind}-${item.id}`;
         switch (item.kind) {

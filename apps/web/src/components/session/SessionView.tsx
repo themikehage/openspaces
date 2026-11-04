@@ -16,7 +16,10 @@ export function SessionView({ sessionId, adapters, onOpen }: Props) {
 
   if (!session) {
     return (
-      <p className="m-auto text-sm text-muted" role={view.actionError ? "alert" : "status"}>
+      <p
+        className="m-auto text-sm text-muted-foreground"
+        role={view.actionError ? "alert" : "status"}
+      >
         {view.actionError ?? "Loading session…"}
       </p>
     );
@@ -50,7 +53,7 @@ export function SessionView({ sessionId, adapters, onOpen }: Props) {
         onDecide={(approvalId, decision) => void view.approve(approvalId, decision)}
       />
       {view.actionError && (
-        <p role="alert" className="px-4 pb-2 text-sm text-danger">
+        <p role="alert" className="px-4 pb-2 text-sm text-destructive">
           {view.actionError}
         </p>
       )}

@@ -7,8 +7,8 @@ export function MessageItem({ item }: { item: Message }) {
   return (
     <div className={`flex ${user ? "justify-end" : "justify-start"}`}>
       <p
-        className={`max-w-[85%] rounded-lg px-3 py-2 text-sm leading-relaxed whitespace-pre-wrap break-words ${
-          user ? "bg-accent text-accent-ink" : "border border-line bg-surface"
+        className={`max-w-[85%] rounded-bubble px-4 py-2.5 text-sm leading-relaxed shadow-card whitespace-pre-wrap break-words ${
+          user ? "rounded-tr-bubble-tail bg-bubble-out" : "rounded-tl-bubble-tail bg-bubble-in"
         }`}
       >
         {item.text}

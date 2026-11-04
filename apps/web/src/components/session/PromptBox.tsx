@@ -1,4 +1,7 @@
+import { SendHorizontal, Square } from "lucide-react";
 import { useState, type KeyboardEvent } from "react";
+import { Button } from "@/components/ui/Button";
+import { fieldClass } from "@/components/ui/Field";
 
 interface Props {
   disabled: boolean;
@@ -27,7 +30,7 @@ export function PromptBox({ disabled, running, canInterrupt, onSend, onInterrupt
 
   return (
     <form
-      className="flex items-end gap-2 border-t border-line bg-surface p-3"
+      className="flex items-end gap-2 bg-card p-4"
       onSubmit={(event) => {
         event.preventDefault();
         void send();
@@ -44,24 +47,23 @@ export function PromptBox({ disabled, running, canInterrupt, onSend, onInterrupt
         rows={2}
         placeholder={running ? "The agent is working…" : "Ask the agent to do something"}
         disabled={disabled}
-        className="min-h-12 flex-1 resize-y rounded-md border border-line bg-bg px-3 py-2 text-sm disabled:opacity-60"
+        className={`${fieldClass} min-h-12 flex-1 resize-y rounded-xl`}
       />
       {running && canInterrupt && (
-        <button
-          type="button"
-          onClick={onInterrupt}
-          className="rounded-md border border-line px-3 py-2 text-sm hover:bg-sunken"
-        >
+        <Button onClick={onInterrupt} className="py-3">
+          <Square className="h-3.5 w-3.5" />
           Interrupt
-        </button>
+        </Button>
       )}
-      <button
+      <Button
         type="submit"
+        variant="accent"
         disabled={disabled || text.trim() === ""}
-        className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-accent-ink disabled:opacity-50"
+        className="py-3"
       >
+        <SendHorizontal className="h-3.5 w-3.5" />
         Send
-      </button>
+      </Button>
     </form>
   );
 }

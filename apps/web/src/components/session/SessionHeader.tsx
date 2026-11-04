@@ -1,5 +1,8 @@
 import type { StreamStatus } from "@openspaces/api-client";
 import type { AdapterInfoDto, SessionDto } from "@openspaces/protocol";
+import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
+import { Avatar } from "@/components/ui/Avatar";
 import { StatusBadge } from "@/components/sessions/StatusBadge";
 import { formatCost } from "@/lib/format";
 import type { Usage } from "@/lib/timeline";
@@ -28,45 +31,34 @@ export function SessionHeader({
   const tokens = usage.inputTokens + usage.outputTokens;
   const unattended = adapter !== undefined && !adapter.capabilities.approvals;
   return (
-    <header className="flex flex-col gap-2 border-b border-line bg-surface px-4 py-3">
+    <header className="flex flex-col gap-3 bg-card px-5 py-4">
       <div className="flex items-center justify-between gap-3">
-        <div className="min-w-0">
-          <h1 className="text-base font-semibold">{adapter?.displayName ?? session.adapterId}</h1>
-          <p className="truncate font-mono text-xs text-muted" title={session.cwd}>
-            {session.cwd}
-          </p>
+        <div className="flex min-w-0 items-center gap-3">
+          <Avatar name={adapter?.displayName ?? session.adapterId} />
+          <div className="min-w-0">
+            <h1 className="text-base font-semibold">{adapter?.displayName ?? session.adapterId}</h1>
+            <p className="truncate font-mono text-xs text-muted-foreground" title={session.cwd}>
+              {session.cwd}
+            </p>
+          </div>
         </div>
         <div className="flex items-center gap-3">
-          <span className="text-xs text-muted" aria-live="polite">
+          <span className="text-xs text-muted-foreground" aria-live="polite">
             {status === "reconnecting" ? "Reconnecting…" : ""}
             {tokens > 0 ? `${tokens.toLocaleString()} tokens ${formatCost(usage.costUsd)}` : ""}
           </span>
           <StatusBadge state={session.state} />
-          {session.workspace === "worktree" && (
-            <span className="rounded-full bg-sunken px-2 py-0.5 text-xs text-muted">worktree</span>
-          )}
+          {session.workspace === "worktree" && <Badge>worktree</Badge>}
           {canResume && (
-            <button
-              type="button"
-              onClick={onResume}
-              className="rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-accent-ink"
-            >
+            <Button variant="accent" onClick={onResume}>
               Resume
-            </button>
+            </Button>
           )}
-          {canClose && (
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-md border border-line px-3 py-1.5 text-sm hover:bg-sunken"
-            >
-              End
-            </button>
-          )}
+          {canClose && <Button onClick={onClose}>End</Button>}
         </div>
       </div>
       {unattended && (
-        <p role="note" className="rounded-md bg-sunken px-3 py-2 text-xs text-warn">
+        <p role="note" className="rounded-lg bg-warning/10 px-3 py-2 text-xs text-warning-strong">
           This agent cannot ask for approvals. It runs unattended with its own permissions.
         </p>
       )}
