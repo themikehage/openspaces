@@ -1,10 +1,10 @@
-import type { AdapterInfoDto } from "@openspaces/protocol";
+import type { AdapterInfoDto, CreateSessionRequest } from "@openspaces/protocol";
 import { useEffect, useMemo, useState } from "react";
 
 interface Params {
   adapters: AdapterInfoDto[];
   projects: string[];
-  create: (input: { adapterId: string; cwd: string }) => Promise<{ id: string }>;
+  create: (input: CreateSessionRequest) => Promise<{ id: string }>;
   onCreated: (id: string) => void;
 }
 
@@ -15,6 +15,8 @@ export function useNewSessionForm({ adapters, projects, create, onCreated }: Par
   );
   const [adapterId, setAdapterId] = useState("");
   const [cwd, setCwd] = useState("");
+  const [workspace, setWorkspace] =
+    useState<NonNullable<CreateSessionRequest["workspace"]>>("auto");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -30,7 +32,7 @@ export function useNewSessionForm({ adapters, projects, create, onCreated }: Par
     setSubmitting(true);
     setError(null);
     try {
-      const session = await create({ adapterId, cwd });
+      const session = await create({ adapterId, cwd, workspace });
       onCreated(session.id);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not create the session");
@@ -44,6 +46,8 @@ export function useNewSessionForm({ adapters, projects, create, onCreated }: Par
     setAdapterId,
     cwd,
     setCwd,
+    workspace,
+    setWorkspace,
     error,
     submitting,
     submit,

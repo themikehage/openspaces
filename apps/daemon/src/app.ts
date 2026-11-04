@@ -33,6 +33,7 @@ export interface DaemonDeps {
   security: SecurityConfig;
   logger: Logger;
   webRoot?: string;
+  workspaces?: { isGitRepo(path: string): Promise<boolean> };
 }
 
 async function json(c: { req: { json(): Promise<unknown> } }): Promise<unknown> {
@@ -100,15 +101,25 @@ export function createApp(deps: DaemonDeps): Hono {
   api.post("/sessions", async (c) => {
     const body = createSessionRequestSchema.parse(await json(c));
     const cwd = await projects.resolve(body.cwd);
+    const requested = body.workspace ?? "auto";
+    const isRepo = deps.workspaces ? await deps.workspaces.isGitRepo(cwd) : false;
+    const workspaceMode = requested === "auto" ? (isRepo ? "worktree" : "in-place") : requested;
     const session = await service.create({
       adapterId: body.adapterId,
       cwd,
+      workspaceMode,
       ...(body.resumeExternalSessionId
         ? { resumeExternalSessionId: body.resumeExternalSessionId }
         : {}),
       ...(body.options ? { options: body.options } : {}),
     });
     return c.json(session, 201);
+  });
+
+  api.post("/sessions/:id/resume", async (c) => {
+    const previous = await mustGet(c.req.param("id"));
+    await projects.resolve(previous.projectPath ?? previous.cwd);
+    return c.json(await service.resume(previous.id), 201);
   });
 
   api.get("/sessions/:id", async (c) => c.json(await mustGet(c.req.param("id"))));

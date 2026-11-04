@@ -1,4 +1,4 @@
-import { randomBytes } from "node:crypto";
+import { randomBytes, randomUUID } from "node:crypto";
 import { existsSync, mkdirSync } from "node:fs";
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
@@ -6,10 +6,11 @@ import { serve } from "@hono/node-server";
 import { createClaudeCodeAdapter } from "@openspaces/adapter-claude-code";
 import { createDevinAdapter } from "@openspaces/adapter-devin";
 import { createFakeAgent } from "@openspaces/adapter-kit";
-import { AdapterRegistry, SessionService, type Logger } from "@openspaces/core";
+import { AdapterRegistry, SessionService } from "@openspaces/core";
 import { SqliteSessionStore } from "@openspaces/store-sqlite";
-import { randomUUID } from "node:crypto";
+import { GitWorktreeProvider } from "@openspaces/workspace-git";
 import { createApp } from "./app.js";
+import { createLogger } from "./logger.js";
 import { ProjectGuard } from "./projects.js";
 
 function parseArgs(argv: string[]) {
@@ -23,14 +24,8 @@ function parseArgs(argv: string[]) {
   return { projects, port };
 }
 
-const logger: Logger = {
-  debug: () => undefined,
-  info: (message, fields) => console.log(JSON.stringify({ level: "info", message, ...fields })),
-  warn: (message, fields) => console.warn(JSON.stringify({ level: "warn", message, ...fields })),
-  error: (message, fields) => console.error(JSON.stringify({ level: "error", message, ...fields })),
-};
-
 async function main() {
+  const logger = createLogger();
   const { projects, port } = parseArgs(process.argv.slice(2));
   if (projects.length === 0) {
     console.error("Usage: openspaces-daemon --project <dir> [--project <dir>] [--port 3210]");
@@ -45,13 +40,19 @@ async function main() {
   registry.register(createDevinAdapter());
   if (process.env["OPENSPACES_FAKE"] === "1") registry.register(createFakeAgent());
 
+  const store = new SqliteSessionStore(join(dataDir, "openspaces.sqlite"));
+  const workspaces = new GitWorktreeProvider({ root: join(dataDir, "worktrees"), logger });
   const service = new SessionService({
     registry,
-    store: new SqliteSessionStore(join(dataDir, "openspaces.sqlite")),
+    store,
+    workspaces,
+    maxLiveSessions: Number(process.env["OPENSPACES_MAX_SESSIONS"] ?? 8),
     clock: { now: () => Date.now() },
     ids: { next: () => randomUUID() },
     logger,
   });
+  const recovered = await service.recover();
+  if (recovered > 0) logger.warn("marked interrupted sessions as failed", { count: recovered });
 
   const defaultWeb = resolve(import.meta.dirname, "../../web/dist");
   const webRoot =
@@ -65,10 +66,25 @@ async function main() {
     projects: await ProjectGuard.create(projects),
     security: { token, allowedHosts: hosts, allowedOrigins: hosts.map((h) => `http://${h}`) },
     logger,
+    workspaces,
     ...(webRoot ? { webRoot } : {}),
   });
 
-  serve({ fetch: app.fetch, hostname: "127.0.0.1", port });
+  const server = serve({ fetch: app.fetch, hostname: "127.0.0.1", port });
+
+  let stopping = false;
+  const shutdown = async (signal: string) => {
+    if (stopping) return;
+    stopping = true;
+    logger.info("shutting down", { signal });
+    server.close();
+    await service.closeAll();
+    store.close();
+    process.exit(0);
+  };
+  process.on("SIGINT", () => void shutdown("SIGINT"));
+  process.on("SIGTERM", () => void shutdown("SIGTERM"));
+
   console.log(`OpenSpaces listening on http://127.0.0.1:${port}`);
   console.log(`Open: http://127.0.0.1:${port}/auth/exchange?token=${token}`);
   console.log(`API token (Authorization: Bearer): ${token}`);

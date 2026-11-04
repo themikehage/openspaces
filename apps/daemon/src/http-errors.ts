@@ -12,6 +12,9 @@ const STATUS: Record<string, ContentfulStatusCode> = {
   project_not_registered: 403,
   duplicate_adapter: 500,
   adapter_start_failed: 502,
+  session_limit: 429,
+  workspace_unavailable: 409,
+  not_resumable: 409,
 };
 
 export function handleError(error: Error, c: Context): Response {

@@ -1,6 +1,6 @@
 # Plan: OpenSpaces MVP, an open source hub for Claude Code and Devin CLI
 
-Status: draft, decisions 1, 3, 4 and 5 settled (2026-11-04). Independent project with its own repo. It builds on `docs/harness-per-entity-analysis.md` but inherits nothing from Spaces (`agent-kernel`, `PermissionEngine`, `ServerContext`).
+Status: phases 0 to 5 implemented (2026-11-04); remaining before 0.1.0: live verification of both CLIs. Independent project with its own repo. It builds on `docs/harness-per-entity-analysis.md` but inherits nothing from Spaces (`agent-kernel`, `PermissionEngine`, `ServerContext`).
 
 Written in English because it will seed the new repo's `docs/`.
 

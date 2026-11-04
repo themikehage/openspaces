@@ -14,6 +14,7 @@ const allowed: Record<string, readonly string[]> = {
   ],
   "adapter-acp": ["@openspaces/adapter-kit", "@openspaces/core"],
   "adapter-devin": ["@openspaces/adapter-acp", "@openspaces/core"],
+  "workspace-git": ["@openspaces/core"],
   "api-client": ["@openspaces/core", "@openspaces/protocol", "zod"],
   "store-sqlite": ["@openspaces/core"],
   "adapter-kit": ["@openspaces/core", "@openspaces/protocol", "vitest"],

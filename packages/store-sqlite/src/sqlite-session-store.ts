@@ -7,6 +7,7 @@ import {
   type SessionRecord,
   type SessionState,
   type SessionStore,
+  type WorkspaceMode,
 } from "@openspaces/core";
 
 interface SessionRow {
@@ -15,6 +16,8 @@ interface SessionRow {
   cwd: string;
   state: string;
   external_session_id: string | null;
+  project_path: string | null;
+  workspace: string | null;
   created_at: number;
   updated_at: number;
 }
@@ -55,6 +58,8 @@ function toRecord(row: SessionRow): SessionRecord {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     ...(row.external_session_id ? { externalSessionId: row.external_session_id } : {}),
+    ...(row.project_path ? { projectPath: row.project_path } : {}),
+    ...(row.workspace ? { workspace: row.workspace as WorkspaceMode } : {}),
   };
 }
 
@@ -64,6 +69,16 @@ export class SqliteSessionStore implements SessionStore {
   constructor(path: string) {
     this.db = new DatabaseSync(path);
     this.db.exec(SCHEMA);
+    this.migrate();
+  }
+
+  private migrate(): void {
+    const row = this.db.prepare("PRAGMA user_version").get() as { user_version: number };
+    if (row.user_version < 1) {
+      this.db.exec("ALTER TABLE sessions ADD COLUMN project_path TEXT");
+      this.db.exec("ALTER TABLE sessions ADD COLUMN workspace TEXT");
+      this.db.exec("PRAGMA user_version = 1");
+    }
   }
 
   close(): void {
@@ -73,8 +88,9 @@ export class SqliteSessionStore implements SessionStore {
   async create(record: SessionRecord): Promise<void> {
     this.db
       .prepare(
-        `INSERT INTO sessions (id, adapter_id, cwd, state, external_session_id, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO sessions
+           (id, adapter_id, cwd, state, external_session_id, project_path, workspace, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         record.id,
@@ -82,6 +98,8 @@ export class SqliteSessionStore implements SessionStore {
         record.cwd,
         record.state,
         record.externalSessionId ?? null,
+        record.projectPath ?? null,
+        record.workspace ?? null,
         record.createdAt,
         record.updatedAt,
       );

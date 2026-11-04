@@ -7,9 +7,10 @@ import { useSession } from "@/hooks/use-session";
 interface Props {
   sessionId: string;
   adapters: AdapterInfoDto[];
+  onOpen: (id: string) => void;
 }
 
-export function SessionView({ sessionId, adapters }: Props) {
+export function SessionView({ sessionId, adapters, onOpen }: Props) {
   const view = useSession(sessionId);
   const { session } = view;
 
@@ -33,7 +34,15 @@ export function SessionView({ sessionId, adapters }: Props) {
         status={view.status}
         usage={view.timeline.usage}
         canClose={!finished}
+        canResume={
+          finished && Boolean(session.externalSessionId) && (adapter?.capabilities.resume ?? false)
+        }
         onClose={() => void view.close()}
+        onResume={() =>
+          void view.resume().then((id) => {
+            if (id) onOpen(id);
+          })
+        }
       />
       <Timeline
         items={view.timeline.items}

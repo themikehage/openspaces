@@ -262,6 +262,9 @@ importers:
       '@openspaces/store-sqlite':
         specifier: workspace:*
         version: link:../../packages/store-sqlite
+      '@openspaces/workspace-git':
+        specifier: workspace:*
+        version: link:../../packages/workspace-git
       hono:
         specifier: ^4.13.16
         version: 4.13.16
@@ -384,6 +387,12 @@ importers:
       '@openspaces/adapter-kit':
         specifier: workspace:*
         version: link:../adapter-kit
+
+  packages/workspace-git:
+    dependencies:
+      '@openspaces/core':
+        specifier: workspace:*
+        version: link:../core
 
 packages:
 

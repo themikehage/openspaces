@@ -19,6 +19,7 @@
     "@openspaces/core": "workspace:*",
     "@openspaces/protocol": "workspace:*",
     "@openspaces/store-sqlite": "workspace:*",
+    "@openspaces/workspace-git": "workspace:*",
     "hono": "^4.13.16",
     "zod": "^4.6.7"
   }

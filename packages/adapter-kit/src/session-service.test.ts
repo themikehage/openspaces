@@ -1,6 +1,8 @@
 import {
   AdapterRegistry,
   MemorySessionStore,
+  NotResumableError,
+  SessionLimitError,
   SessionNotLiveError,
   SessionService,
   withCapabilities,
@@ -8,6 +10,8 @@ import {
   type AgentEvent,
   type AgentEventBody,
   type Logger,
+  type Workspace,
+  type WorkspaceProvider,
 } from "@openspaces/core";
 import { describe, expect, it } from "vitest";
 import { EventChannel } from "./event-channel.js";
@@ -15,7 +19,10 @@ import { createFakeAgent, FAKE_TRIGGERS } from "./fake-agent.js";
 
 const silent: Logger = { debug() {}, info() {}, warn() {}, error() {} };
 
-function build(adapter: AgentAdapter = createFakeAgent()) {
+function build(
+  adapter: AgentAdapter = createFakeAgent(),
+  extra: { workspaces?: WorkspaceProvider; maxLiveSessions?: number } = {},
+) {
   let n = 0;
   const registry = new AdapterRegistry();
   registry.register(adapter);
@@ -26,6 +33,7 @@ function build(adapter: AgentAdapter = createFakeAgent()) {
     clock: { now: () => ++n },
     ids: { next: () => `s${++n}` },
     logger: silent,
+    ...extra,
   });
   return { service, store };
 }
@@ -171,5 +179,124 @@ describe("SessionService", () => {
     const session = await service.create({ adapterId: "flaky", cwd: "/tmp" });
     await service.prompt(session.id, "go");
     await until(async () => (await service.get(session.id))?.state === "failed");
+  });
+
+  it("enforces the live session limit and frees slots when sessions end", async () => {
+    const { service } = build(createFakeAgent(), { maxLiveSessions: 1 });
+    const first = await service.create({ adapterId: "fake", cwd: "/tmp" });
+    await expect(service.create({ adapterId: "fake", cwd: "/tmp" })).rejects.toThrow(
+      SessionLimitError,
+    );
+    await service.close(first.id);
+    await until(() => service.liveCount() === 0);
+    const second = await service.create({ adapterId: "fake", cwd: "/tmp" });
+    expect(second.state).toBe("idle");
+    await service.close(second.id);
+  });
+
+  it("marks a session failed when the adapter cannot start", async () => {
+    const broken: AgentAdapter = {
+      ...createFakeAgent(),
+      id: "broken",
+      start: async () => {
+        throw new Error("spawn failed");
+      },
+    };
+    const { service } = build(broken);
+    await expect(service.create({ adapterId: "broken", cwd: "/tmp" })).rejects.toThrow(
+      /spawn failed/,
+    );
+    const [record] = await service.list();
+    expect(record?.state).toBe("failed");
+    expect((await service.events(record?.id ?? "")).at(-1)).toMatchObject({
+      code: "start_failed",
+    });
+  });
+
+  it("recovers sessions left active by a previous daemon run", async () => {
+    const { service, store } = build();
+    await store.create({
+      id: "old",
+      adapterId: "fake",
+      cwd: "/tmp",
+      state: "running",
+      createdAt: 1,
+      updatedAt: 1,
+    });
+    expect(await service.recover()).toBe(1);
+    expect((await store.get("old"))?.state).toBe("failed");
+    const types = (await store.readEvents("old")).map((e) => e.type);
+    expect(types).toEqual(["session.error", "session.ended"]);
+    expect(await service.recover()).toBe(0);
+  });
+
+  it("resumes ended sessions with the stored agent session id", async () => {
+    const seen: Array<string | undefined> = [];
+    const adapter: AgentAdapter = {
+      ...createFakeAgent(),
+      capabilities: withCapabilities({ resume: true }),
+      start: async (spec) => {
+        seen.push(spec.resumeExternalSessionId);
+        return createFakeAgent().start(spec);
+      },
+    };
+    const { service } = build(adapter);
+    const first = await service.create({ adapterId: "fake", cwd: "/tmp/p" });
+    await expect(service.resume(first.id)).rejects.toThrow(NotResumableError);
+    await service.close(first.id);
+    await until(async () => (await service.get(first.id))?.state === "ended");
+    const next = await service.resume(first.id);
+    expect(next.id).not.toBe(first.id);
+    expect(next.cwd).toBe("/tmp/p");
+    expect(seen).toEqual([undefined, "fake-session"]);
+    await service.closeAll();
+  });
+
+  it("refuses to resume agents without resume support", async () => {
+    const { service } = build();
+    const session = await service.create({ adapterId: "fake", cwd: "/tmp" });
+    await service.close(session.id);
+    await until(async () => (await service.get(session.id))?.state === "ended");
+    await expect(service.resume(session.id)).rejects.toThrow(/does not support/);
+  });
+
+  it("creates a worktree workspace and disposes it when the session ends", async () => {
+    const events: string[] = [];
+    const workspaces: WorkspaceProvider = {
+      create: async (spec): Promise<Workspace> => {
+        events.push(`create:${spec.projectPath}:${spec.mode}`);
+        return { path: "/tmp/wt", dispose: async () => void events.push("dispose") };
+      },
+    };
+    const { service } = build(createFakeAgent(), { workspaces });
+    const session = await service.create({
+      adapterId: "fake",
+      cwd: "/tmp/project",
+      workspaceMode: "worktree",
+    });
+    expect(session).toMatchObject({
+      cwd: "/tmp/wt",
+      projectPath: "/tmp/project",
+      workspace: "worktree",
+    });
+    await service.close(session.id);
+    expect(events).toEqual(["create:/tmp/project:worktree", "dispose"]);
+  });
+
+  it("rejects worktree sessions when no provider is configured", async () => {
+    const { service } = build();
+    await expect(
+      service.create({ adapterId: "fake", cwd: "/tmp", workspaceMode: "worktree" }),
+    ).rejects.toThrow(/not configured/);
+  });
+
+  it("closes every live session on shutdown", async () => {
+    const { service } = build();
+    const a = await service.create({ adapterId: "fake", cwd: "/tmp" });
+    const b = await service.create({ adapterId: "fake", cwd: "/tmp" });
+    await service.closeAll();
+    await until(() => service.liveCount() === 0);
+    expect((await service.get(a.id))?.state).toBe("ended");
+    expect((await service.get(b.id))?.state).toBe("ended");
   });
 });

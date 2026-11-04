@@ -1,4 +1,4 @@
-import type { AdapterInfoDto } from "@openspaces/protocol";
+import type { AdapterInfoDto, CreateSessionRequest } from "@openspaces/protocol";
 import { useEffect, useRef } from "react";
 import { useNewSessionForm } from "@/hooks/use-new-session-form";
 
@@ -6,7 +6,7 @@ interface Props {
   open: boolean;
   adapters: AdapterInfoDto[];
   projects: string[];
-  create: (input: { adapterId: string; cwd: string }) => Promise<{ id: string }>;
+  create: (input: CreateSessionRequest) => Promise<{ id: string }>;
   onClose: () => void;
   onCreated: (id: string) => void;
 }
@@ -79,6 +79,19 @@ export function NewSessionDialog({ open, adapters, projects, create, onClose, on
               <option key={project} value={project} />
             ))}
           </datalist>
+        </label>
+
+        <label className="flex flex-col gap-1 text-sm">
+          Workspace
+          <select
+            className={field}
+            value={form.workspace}
+            onChange={(event) => form.setWorkspace(event.target.value as typeof form.workspace)}
+          >
+            <option value="auto">Automatic (isolated worktree for git projects)</option>
+            <option value="worktree">Isolated git worktree</option>
+            <option value="in-place">Work in place</option>
+          </select>
         </label>
 
         {form.error && (

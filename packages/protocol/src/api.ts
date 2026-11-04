@@ -6,6 +6,7 @@ export const createSessionRequestSchema = z.object({
   adapterId: z.string().min(1).max(64),
   cwd: z.string().min(1).max(4096),
   resumeExternalSessionId: z.string().min(1).max(256).optional(),
+  workspace: z.enum(["auto", "worktree", "in-place"]).optional(),
   options: z.record(z.string(), z.unknown()).optional(),
 });
 
@@ -31,6 +32,8 @@ export const sessionSchema = z.object({
   cwd: z.string(),
   state: sessionStateSchema,
   externalSessionId: z.string().optional(),
+  projectPath: z.string().optional(),
+  workspace: z.enum(["worktree", "in-place"]).optional(),
   createdAt: z.number(),
   updatedAt: z.number(),
 });

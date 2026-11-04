@@ -42,6 +42,8 @@ export interface SessionRecord {
   cwd: string;
   state: SessionState;
   externalSessionId?: string;
+  projectPath?: string;
+  workspace?: WorkspaceMode;
   createdAt: number;
   updatedAt: number;
 }

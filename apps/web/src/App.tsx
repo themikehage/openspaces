@@ -30,7 +30,7 @@ export function App() {
 
       <main className="flex min-w-0 flex-1 flex-col">
         {sessionId ? (
-          <SessionView key={sessionId} sessionId={sessionId} adapters={adapters} />
+          <SessionView key={sessionId} sessionId={sessionId} adapters={adapters} onOpen={open} />
         ) : (
           <p className="m-auto text-sm text-muted">Select a session or start a new one.</p>
         )}

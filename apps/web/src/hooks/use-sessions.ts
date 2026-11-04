@@ -1,4 +1,4 @@
-import type { AdapterInfoDto, SessionDto } from "@openspaces/protocol";
+import type { AdapterInfoDto, CreateSessionRequest, SessionDto } from "@openspaces/protocol";
 import { useCallback, useEffect, useState } from "react";
 import { client } from "@/lib/client";
 
@@ -39,7 +39,7 @@ export function useSessions() {
   }, []);
 
   const create = useCallback(
-    async (input: { adapterId: string; cwd: string }) => {
+    async (input: CreateSessionRequest) => {
       const session = await client.createSession(input);
       await refresh();
       return session;

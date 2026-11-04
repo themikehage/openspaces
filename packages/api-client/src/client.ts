@@ -20,6 +20,7 @@ export interface OpenSpacesClient {
   prompt(id: string, text: string): Promise<void>;
   interrupt(id: string): Promise<void>;
   resolveApproval(id: string, approvalId: string, decision: ApprovalDecision): Promise<void>;
+  resumeSession(id: string): Promise<SessionDto>;
   closeSession(id: string): Promise<void>;
   listAdapters(signal?: AbortSignal): Promise<AdapterInfoDto[]>;
   listProjects(signal?: AbortSignal): Promise<string[]>;
@@ -47,6 +48,8 @@ export function createClient(baseUrl = ""): OpenSpacesClient {
         body: { decision },
       });
     },
+    resumeSession: (id) =>
+      call(`/api/sessions/${enc(id)}/resume`, sessionSchema, { method: "POST" }),
     closeSession: async (id) => {
       await call(`/api/sessions/${enc(id)}`, undefined, { method: "DELETE" });
     },

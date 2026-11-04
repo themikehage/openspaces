@@ -1,7 +1,24 @@
 import type { AdapterRegistry } from "./adapter-registry.js";
-import { AdapterStartError, OpenSpacesError } from "./errors.js";
+import {
+  AdapterStartError,
+  NotResumableError,
+  OpenSpacesError,
+  SessionLimitError,
+  UnknownSessionError,
+  WorkspaceUnavailableError,
+} from "./errors.js";
 import type { AgentEvent, AgentEventBody, ApprovalDecision } from "./events.js";
-import type { AgentRun, Clock, IdGenerator, Logger, SessionRecord, SessionStore } from "./ports.js";
+import type {
+  AgentRun,
+  Clock,
+  IdGenerator,
+  Logger,
+  SessionRecord,
+  SessionStore,
+  Workspace,
+  WorkspaceMode,
+  WorkspaceProvider,
+} from "./ports.js";
 import { isTerminal, transition, type SessionInput, type SessionState } from "./session-state.js";
 
 export interface SessionServiceDeps {
@@ -10,11 +27,15 @@ export interface SessionServiceDeps {
   clock: Clock;
   ids: IdGenerator;
   logger: Logger;
+  workspaces?: WorkspaceProvider;
+  maxLiveSessions?: number;
 }
 
 export interface CreateSessionInput {
   adapterId: string;
   cwd: string;
+  projectPath?: string;
+  workspaceMode?: WorkspaceMode;
   resumeExternalSessionId?: string;
   options?: Readonly<Record<string, unknown>>;
 }
@@ -28,6 +49,8 @@ interface LiveSession {
   queue: Promise<void>;
   ready: Promise<void>;
   closing: boolean;
+  workspace: Workspace | undefined;
+  finished: Promise<void>;
   markReady: () => void;
 }
 
@@ -45,28 +68,43 @@ export class SessionService {
   async create(input: CreateSessionInput): Promise<SessionRecord> {
     const { registry, store, clock, ids } = this.deps;
     const adapter = registry.get(input.adapterId);
+    this.assertCapacity();
     const probe = await adapter.probe();
     if (!probe.available || !probe.supported) {
       throw new AdapterStartError(adapter.id, probe.reason ?? "adapter is not available");
     }
+
+    const id = ids.next();
+    const mode = input.workspaceMode ?? "in-place";
+    const workspace = await this.openWorkspace(id, input.cwd, mode);
+    const cwd = workspace?.path ?? input.cwd;
     const now = clock.now();
     const record: SessionRecord = {
-      id: ids.next(),
+      id,
       adapterId: adapter.id,
-      cwd: input.cwd,
+      cwd,
+      projectPath: input.projectPath ?? input.cwd,
+      workspace: mode,
       state: "created",
       createdAt: now,
       updatedAt: now,
     };
     await store.create(record);
 
-    const run = await adapter.start({
-      cwd: input.cwd,
-      ...(input.resumeExternalSessionId
-        ? { resumeExternalSessionId: input.resumeExternalSessionId }
-        : {}),
-      ...(input.options ? { options: input.options } : {}),
-    });
+    let run: AgentRun;
+    try {
+      run = await adapter.start({
+        cwd,
+        ...(input.resumeExternalSessionId
+          ? { resumeExternalSessionId: input.resumeExternalSessionId }
+          : {}),
+        ...(input.options ? { options: input.options } : {}),
+      });
+    } catch (error) {
+      await this.recordStartFailure(record, error);
+      await workspace?.dispose().catch(() => undefined);
+      throw error;
+    }
 
     let markReady: () => void = () => undefined;
     const ready = new Promise<void>((resolve) => {
@@ -79,13 +117,59 @@ export class SessionService {
       queue: Promise.resolve(),
       ready,
       closing: false,
+      workspace,
+      finished: Promise.resolve(),
       markReady,
     };
     this.live.set(record.id, session);
     await this.apply(record.id, session, { kind: "command", command: "start" });
-    void this.pump(record.id, session);
+    session.finished = this.pump(record.id, session);
     await ready;
     return this.mustGet(record.id);
+  }
+
+  async resume(id: string): Promise<SessionRecord> {
+    const record = await this.deps.store.get(id);
+    if (!record) throw new UnknownSessionError(id);
+    if (!isTerminal(record.state)) throw new NotResumableError(id, "it is still active");
+    if (!record.externalSessionId)
+      throw new NotResumableError(id, "the agent session id is unknown");
+    if (!this.deps.registry.get(record.adapterId).capabilities.resume) {
+      throw new NotResumableError(id, "the agent does not support resuming");
+    }
+    return this.create({
+      adapterId: record.adapterId,
+      cwd: record.cwd,
+      ...(record.projectPath ? { projectPath: record.projectPath } : {}),
+      resumeExternalSessionId: record.externalSessionId,
+    });
+  }
+
+  async recover(): Promise<number> {
+    const { store, clock } = this.deps;
+    let recovered = 0;
+    for (const record of await store.list()) {
+      if (isTerminal(record.state) || this.live.has(record.id)) continue;
+      const failure: AgentEventBody = {
+        type: "session.error",
+        code: "daemon_restarted",
+        message: "The daemon restarted while this session was active",
+        fatal: true,
+      };
+      await store.appendEvent(record.id, failure, clock.now());
+      await store.appendEvent(record.id, { type: "session.ended", reason: "failed" }, clock.now());
+      await store.update(record.id, { state: "failed" }, clock.now());
+      recovered += 1;
+    }
+    return recovered;
+  }
+
+  async closeAll(): Promise<void> {
+    await Promise.all([...this.live.keys()].map((id) => this.close(id)));
+  }
+
+  liveCount(): number {
+    return [...this.live.values()].filter((session) => !isTerminal(session.state)).length;
   }
 
   async get(id: string): Promise<SessionRecord | undefined> {
@@ -140,7 +224,35 @@ export class SessionService {
     session.closing = true;
     await session.run.close();
     await session.queue;
+    await session.finished;
     this.live.delete(id);
+  }
+
+  private assertCapacity(): void {
+    const limit = this.deps.maxLiveSessions;
+    if (limit !== undefined && this.liveCount() >= limit) throw new SessionLimitError(limit);
+  }
+
+  private async openWorkspace(
+    id: string,
+    cwd: string,
+    mode: WorkspaceMode,
+  ): Promise<Workspace | undefined> {
+    if (mode === "in-place") return undefined;
+    const provider = this.deps.workspaces;
+    if (!provider) throw new WorkspaceUnavailableError("Worktree sessions are not configured");
+    return provider.create({ projectPath: cwd, sessionId: id, mode });
+  }
+
+  private async recordStartFailure(record: SessionRecord, error: unknown): Promise<void> {
+    const { store, clock } = this.deps;
+    const message = error instanceof Error ? error.message : String(error);
+    await store.appendEvent(
+      record.id,
+      { type: "session.error", code: "start_failed", message, fatal: true },
+      clock.now(),
+    );
+    await store.update(record.id, { state: "failed" }, clock.now());
   }
 
   private liveSession(id: string): LiveSession {
@@ -182,7 +294,17 @@ export class SessionService {
       } else if (!isTerminal(session.state)) {
         await this.fail(id, session, "stream_ended", "Adapter stream ended unexpectedly");
       }
+      await this.release(id, session);
     }
+  }
+
+  private async release(id: string, session: LiveSession): Promise<void> {
+    try {
+      await session.workspace?.dispose();
+    } catch (error) {
+      this.deps.logger.warn("workspace cleanup failed", { id, error: String(error) });
+    }
+    this.live.delete(id);
   }
 
   private async handle(id: string, session: LiveSession, body: AgentEventBody): Promise<void> {

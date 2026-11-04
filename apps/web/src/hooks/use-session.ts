@@ -71,5 +71,12 @@ export function useSession(sessionId: string) {
     approve: (approvalId: string, decision: Parameters<typeof client.resolveApproval>[2]) =>
       run(() => client.resolveApproval(sessionId, approvalId, decision)),
     close: () => run(() => client.closeSession(sessionId)),
+    resume: async (): Promise<string | null> => {
+      let next: string | null = null;
+      await run(async () => {
+        next = (await client.resumeSession(sessionId)).id;
+      });
+      return next;
+    },
   };
 }

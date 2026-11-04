@@ -16,6 +16,13 @@ export function runSessionStoreContract(name: string, create: () => SessionStore
       expect((await store.list()).map((s) => s.id)).toEqual(["b", "a"]);
     });
 
+    it("round-trips workspace fields", async () => {
+      const store = create();
+      const full = { ...record("w"), projectPath: "/p", workspace: "worktree" as const };
+      await store.create(full);
+      expect(await store.get("w")).toEqual(full);
+    });
+
     it("updates state and external id", async () => {
       const store = create();
       await store.create(record("a"));

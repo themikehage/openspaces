@@ -10,10 +10,21 @@ interface Props {
   status: StreamStatus;
   usage: Usage;
   canClose: boolean;
+  canResume: boolean;
   onClose: () => void;
+  onResume: () => void;
 }
 
-export function SessionHeader({ session, adapter, status, usage, canClose, onClose }: Props) {
+export function SessionHeader({
+  session,
+  adapter,
+  status,
+  usage,
+  canClose,
+  canResume,
+  onClose,
+  onResume,
+}: Props) {
   const tokens = usage.inputTokens + usage.outputTokens;
   const unattended = adapter !== undefined && !adapter.capabilities.approvals;
   return (
@@ -31,6 +42,18 @@ export function SessionHeader({ session, adapter, status, usage, canClose, onClo
             {tokens > 0 ? `${tokens.toLocaleString()} tokens ${formatCost(usage.costUsd)}` : ""}
           </span>
           <StatusBadge state={session.state} />
+          {session.workspace === "worktree" && (
+            <span className="rounded-full bg-sunken px-2 py-0.5 text-xs text-muted">worktree</span>
+          )}
+          {canResume && (
+            <button
+              type="button"
+              onClick={onResume}
+              className="rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-accent-ink"
+            >
+              Resume
+            </button>
+          )}
           {canClose && (
             <button
               type="button"
